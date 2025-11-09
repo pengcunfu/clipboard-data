@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release on ${{ matrix.platform }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libjavascriptcoregtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          key: ${{ matrix.platform }}
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: '老黄剪贴板工具 v__VERSION__'
+          releaseBody: |
+            ## 老黄剪贴板自动收集工具 v__VERSION__
+            
+            ### 功能特性
+            - 🎯 **自动监听剪贴板** - 实时捕获剪贴板内容变化
+            - 📝 **历史记录管理** - 保存所有剪贴板历史记录
+            - 🔍 **快速搜索** - 支持关键词搜索历史记录
+            - 📋 **一键复制** - 快速复制历史记录到剪贴板
+            - 💾 **导出功能** - 将历史记录导出为文本文件
+            - 🎨 **现代化UI** - 使用 Ant Design 组件库
+            - 🔔 **系统托盘** - 最小化到系统托盘，随时访问
+            - ⚡ **高性能** - Rust 后端保证高效运行
+            
+            ### 技术栈
+            - **后端**: Rust + Tauri
+            - **前端**: React + TypeScript + Ant Design
+            - **构建工具**: Vite
+            
+            ### 下载说明
+            - **Windows**: 下载 `.msi` 或 `.exe` 安装包
+            - **macOS**: 下载 `.dmg` 文件
+            - **Linux**: 下载 `.AppImage` 或 `.deb` 文件
+            
+            ### 使用说明
+            1. 安装并启动应用
+            2. 应用会自动监听剪贴板变化
+            3. 使用搜索框快速查找历史记录
+            4. 点击记录查看完整内容
+            5. 使用"复制"按钮将内容复制到剪贴板
+            
+            ### 更新日志
+            查看完整更新日志请访问 [README.md](https://github.com/pengcunfu/clipboard-data/blob/master/README.md)
+          releaseDraft: false
+          prerelease: false
