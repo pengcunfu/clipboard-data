@@ -1,14 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use chrono::Local;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use tauri::{
     CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem,
 };
-use chrono::Local;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ClipboardEntry {
@@ -28,7 +28,7 @@ impl AppState {
         let storage_path = std::env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))
             .join("clipboard_history.json");
-        
+
         Self {
             monitoring_enabled: Arc::new(Mutex::new(true)),
             history: Arc::new(Mutex::new(Vec::new())),
@@ -64,10 +64,7 @@ fn get_history(state: tauri::State<AppState>) -> Result<Vec<ClipboardEntry>, Str
 }
 
 #[tauri::command]
-fn add_to_history(
-    text: String,
-    state: tauri::State<AppState>,
-) -> Result<ClipboardEntry, String> {
+fn add_to_history(text: String, state: tauri::State<AppState>) -> Result<ClipboardEntry, String> {
     let monitoring = state.monitoring_enabled.lock().unwrap();
     if !*monitoring {
         return Err("Monitoring is disabled".to_string());
@@ -82,10 +79,10 @@ fn add_to_history(
 
     let mut history = state.history.lock().unwrap();
     history.insert(0, entry.clone());
-    
+
     // Save to file
     state.save_history(&history)?;
-    
+
     Ok(entry)
 }
 
@@ -111,20 +108,16 @@ fn get_monitoring_status(state: tauri::State<AppState>) -> Result<bool, String> 
 }
 
 #[tauri::command]
-fn export_history(
-    file_path: String,
-    state: tauri::State<AppState>,
-) -> Result<(), String> {
+fn export_history(file_path: String, state: tauri::State<AppState>) -> Result<(), String> {
     let history = state.history.lock().unwrap();
     let mut content = String::new();
-    
+
     for entry in history.iter() {
         content.push_str(&format!("{}\n{}\n\n", entry.timestamp, entry.text));
     }
-    
-    fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to export history: {}", e))?;
-    
+
+    fs::write(&file_path, content).map_err(|e| format!("Failed to export history: {}", e))?;
+
     Ok(())
 }
 
@@ -132,19 +125,19 @@ fn create_system_tray() -> SystemTray {
     let show = CustomMenuItem::new("show".to_string(), "显示主窗口");
     let toggle = CustomMenuItem::new("toggle".to_string(), "关闭监听");
     let quit = CustomMenuItem::new("quit".to_string(), "退出");
-    
+
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
         .add_item(toggle)
         .add_native_item(SystemTrayMenuItem::Separator)
         .add_item(quit);
-    
+
     SystemTray::new().with_menu(tray_menu)
 }
 
 fn main() {
     let app_state = AppState::new();
-    
+
     // Load history on startup
     if let Ok(history) = app_state.load_history() {
         let mut hist = app_state.history.lock().unwrap();
@@ -174,7 +167,7 @@ fn main() {
                     let state = app.state::<AppState>();
                     let mut monitoring = state.monitoring_enabled.lock().unwrap();
                     *monitoring = !*monitoring;
-                    
+
                     let tray_handle = app.tray_handle();
                     let menu_item = tray_handle.get_item("toggle");
                     if *monitoring {
@@ -182,7 +175,7 @@ fn main() {
                     } else {
                         menu_item.set_title("开启监听").unwrap();
                     }
-                    
+
                     // Emit event to frontend
                     app.emit_all("monitoring-changed", *monitoring).unwrap();
                 }

@@ -52,9 +52,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: '老黄剪贴板工具 v__VERSION__'
+          releaseName: '剪贴板工具 v__VERSION__'
           releaseBody: |
-            ## 老黄剪贴板自动收集工具 v__VERSION__
+            ## 剪贴板自动收集工具 v__VERSION__
             
             ### 功能特性
             - 🎯 **自动监听剪贴板** - 实时捕获剪贴板内容变化
